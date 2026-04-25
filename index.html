@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="الجومان.png" type="image/png">
+<title>الجومان AI 🇪🇬</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  background-size: 400% 400%;
+  animation: bgMove 10s ease infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: white;
+  padding: 20px;
+}
+
+@keyframes bgMove {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.container {
+  width: 100%;
+  max-width: 660px;
+  padding: 28px;
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 12px 50px rgba(0,0,0,0.45);
+}
+
+h1 { text-align: center; font-size: 1.6rem; margin-bottom: 4px; }
+.subtitle { text-align: center; font-size: 11px; opacity: 0.5; margin-bottom: 20px; }
+
+#chat {
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 14px;
+  min-height: 120px;
+  max-height: 360px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 88%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.user       { background: #008c81; align-self: flex-start; }
+.ai         { background: #1b2d45; border-right: 3px solid #00e0c9; align-self: flex-end; }
+.error-msg  { background: rgba(220,53,69,0.25); border-right: 3px solid #dc3545; align-self: flex-end; font-size: 13px; }
+.debug-msg  { background: rgba(255,193,7,0.15); border-right: 3px solid #ffc107; align-self: flex-end; font-size: 12px; font-family: monospace; direction: ltr; text-align: left; }
+
+.empty-state { text-align:center; opacity:0.45; margin:auto; padding:2rem 0; line-height:2.2; font-size:14px; }
+
+.input-area { display:flex; gap:8px; align-items:flex-end; }
+
+textarea {
+  flex: 1;
+  padding: 11px 14px;
+  border: none; border-radius: 10px; outline: none;
+  resize: none; min-height: 46px; max-height: 130px;
+  background: rgba(255,255,255,0.1);
+  color: white; font-size: 14px; font-family: inherit;
+  line-height: 1.5; direction: rtl; transition: background 0.2s;
+}
+textarea::placeholder { color: #aaa; }
+textarea:focus { background: rgba(255,255,255,0.15); }
+
+#sendBtn {
+  padding: 0 20px; height: 46px;
+  border: none; border-radius: 10px;
+  background: linear-gradient(45deg, #00AD9F, #00e0c9);
+  color: white; font-weight: bold; font-size: 14px;
+  cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+#sendBtn:hover:not(:disabled) { transform:scale(1.04); box-shadow:0 0 18px rgba(0,224,201,0.5); }
+#sendBtn:disabled { background:#555; cursor:not-allowed; }
+
+.status-bar { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+#statusText { font-size:11px; opacity:0.6; }
+#clearBtn { font-size:11px; opacity:0.5; cursor:pointer; border:none; background:none; color:white; padding:3px 8px; border-radius:6px; }
+#clearBtn:hover { opacity:0.9; background:rgba(255,255,255,0.1); }
+
+.loader { display:none; justify-content:flex-end; gap:5px; padding:4px 14px; margin-bottom:4px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#00e0c9; animation:bounce 1.2s infinite; }
+.dot:nth-child(2) { animation-delay:0.2s; }
+.dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes bounce {
+  0%,80%,100% { opacity:0.2; transform:scale(0.8); }
+  40%          { opacity:1;   transform:scale(1.1); }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🤖 الجومان AI</h1>
+  <p class="subtitle">المطور: معتصم محمود فوزي مختار موسى أبو النجا — v1.0</p>
+
+  <div id="chat">
+    <div class="empty-state" id="emptyState">
+      مرحباً! أنا الجومان 👋<br>
+      <span style="font-size:12px">اسأل أي حاجة... أنا هنا وجاهز</span>
+    </div>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <div class="input-area">
+    <button id="sendBtn" onclick="askJouman()">إرسال</button>
+    <textarea id="promptInput" placeholder="اكتب سؤالك هنا..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askJouman()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,130)+'px'"></textarea>
+  </div>
+
+  <div class="status-bar">
+    <span id="statusText">جاهز للمحادثة</span>
+    <button id="clearBtn" onclick="clearChat()">مسح المحادثة</button>
+  </div>
+</div>
+
+<script>
+// تاريخ المحادثة
+const conversationHistory = [];
+
+// ملف المستخدم
+const userProfile = { name: null, lastTopics: [] };
+
+function extractUserInfo(msg) {
+  const m = msg.match(/اسمي\s+(\S+)/);
+  if (m) userProfile.name = m[1];
+  ["برمجة","كود","فلسطين","مصر","رياضة","موسيقى"].forEach(t => {
+    if (msg.includes(t) && !userProfile.lastTopics.includes(t))
+      userProfile.lastTopics.push(t);
+  });
+}
+
+function buildUserContext() {
+  if (!userProfile.name && !userProfile.lastTopics.length) return "";
+  let ctx = "\n\nمعلومات عن المستخدم:\n";
+  if (userProfile.name) ctx += `- اسمه: ${userProfile.name}\n`;
+  if (userProfile.lastTopics.length) ctx += `- اهتماماته: ${userProfile.lastTopics.join("، ")}\n`;
+  return ctx;
+}
+
+// ── إضافة رسالة للشات ──
+function addMsg(text, cls) {
+  const chat = document.getElementById("chat");
+  const div  = document.createElement("div");
+  div.className = "msg " + cls;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+// ── typewriter effect ──
+function typeWriter(div, text) {
+  let i = 0;
+  function next() {
+    if (i < text.length) {
+      div.textContent += text[i++];
+      document.getElementById("chat").scrollTop = 99999;
+      setTimeout(next, 9);
+    }
+  }
+  next();
+}
+
+async function askJouman() {
+  const input  = document.getElementById("promptInput");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  const btn    = document.getElementById("sendBtn");
+  const status = document.getElementById("statusText");
+  const loader = document.getElementById("loader");
+  const empty  = document.getElementById("emptyState");
+
+  if (empty) empty.remove();
+
+  // عرض رسالة المستخدم
+  addMsg(prompt, "user");
+  input.value = "";
+  input.style.height = "auto";
+  btn.disabled = true;
+  loader.style.display = "flex";
+  status.textContent = "الجومان بيفكر...";
+
+  conversationHistory.push({ role: "user", content: prompt });
+  extractUserInfo(prompt);
+
+  try {
+    // ── الـ fetch ──
+    const res = await fetch("/.netlify/functions/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: conversationHistory,
+        userContext: buildUserContext()
+      })
+    });
+
+    // ── اقرأ كـ text الأول عشان ما نفشلش لو الرد فاضي ──
+    const rawText = await res.text();
+
+    // لو الرد فاضي خالص
+    if (!rawText || rawText.trim() === "") {
+      loader.style.display = "none";
+      addMsg("الـ function رجعت رد فاضي — تأكد من الـ ANTHROPIC_API_KEY في Netlify", "error-msg");
+      // اعرض الـ status code للـ debug
+      addMsg(`HTTP Status: ${res.status} ${res.statusText}`, "debug-msg");
+      status.textContent = "خطأ";
+      btn.disabled = false;
+      return;
+    }
+
+    // ── parse الـ JSON ──
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      loader.style.display = "none";
+      addMsg("الـ function مردتش JSON صح", "error-msg");
+      addMsg("Raw response: " + rawText.slice(0, 300), "debug-msg");
+      status.textContent = "خطأ";
+      btn.disabled = false;
+      return;
+    }
+
+    // ── لو في error message من الـ function ──
+    if (data.error) {
+      loader.style.display = "none";
+      addMsg("❌ " + data.error, "error-msg");
+      status.textContent = "خطأ";
+      btn.disabled = false;
+      return;
+    }
+
+    // ── الرد التمام ──
+    const answer = data.answer || "مفيش رد";
+    conversationHistory.push({ role: "assistant", content: answer });
+
+    loader.style.display = "none";
+    const aiDiv = addMsg("", "ai");
+    typeWriter(aiDiv, answer);
+
+    const count = Math.floor(conversationHistory.length / 2);
+    status.textContent = `تم الرد ✓  (${count} رسالة)`;
+
+  } catch (err) {
+    // ── network error أو حاجة تانية ──
+    loader.style.display = "none";
+    addMsg("❌ Network error: " + err.message, "error-msg");
+    addMsg("تأكد إن الـ function اتنشرت صح في Netlify", "debug-msg");
+    status.textContent = "خطأ";
+    console.error("[الجومان]:", err);
+  }
+
+  btn.disabled = false;
+}
+
+function clearChat() {
+  conversationHistory.length = 0;
+  userProfile.name = null;
+  userProfile.lastTopics = [];
+  document.getElementById("chat").innerHTML = `
+    <div class="empty-state" id="emptyState">
+      مرحباً! أنا الجومان 👋<br>
+      <span style="font-size:12px">اسأل أي حاجة... أنا هنا وجاهز</span>
+    </div>`;
+  document.getElementById("statusText").textContent = "جاهز للمحادثة";
+}
+</script>
+</body>
+</html>
